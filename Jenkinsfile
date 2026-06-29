@@ -1,6 +1,6 @@
 // Declarative CI pipeline for spring-petclinic.
 // Jenkins runs these stages on every change pushed to the fork:
-// checkout -> build -> test. Later subtasks add SAST, DAST, and deploy.
+// checkout -> build -> test -> SAST. Later subtasks add DAST and deploy.
 pipeline {
     agent any
 
@@ -35,6 +35,16 @@ pipeline {
             steps {
                 // Unit tests use an embedded H2 database, so no external DB is needed.
                 sh './mvnw -B test'
+            }
+        }
+
+        stage('SAST') {
+            steps {
+                // withSonarQubeEnv injects the server URL and token from the Jenkins
+                // SonarQube config named 'SonarQube', then Maven uploads the analysis.
+                withSonarQubeEnv('SonarQube') {
+                    sh './mvnw -B sonar:sonar'
+                }
             }
         }
     }
