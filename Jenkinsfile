@@ -86,6 +86,9 @@ pipeline {
                 sh '''
                     docker rm -f zap-scan || true
                     docker volume rm zap-wrk >/dev/null 2>&1 || true
+                    # A fresh named volume is root-owned, but ZAP runs as a non-root
+                    # user and must write the report into /zap/wrk. Make it writable.
+                    docker run --rm -v zap-wrk:/zap/wrk alpine chmod 777 /zap/wrk
                     docker run --name zap-scan --network devsecops-net -v zap-wrk:/zap/wrk \
                         ghcr.io/zaproxy/zaproxy:stable \
                         zap-baseline.py -t http://petclinic-staging:8080 -r zap-report.html -I || true
