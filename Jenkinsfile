@@ -79,15 +79,19 @@ pipeline {
         stage('DAST') {
             steps {
                 // One-shot ZAP baseline scan against the running staging app.
-                // -I keeps warnings from failing the step; docker cp pulls the
-                // report out (avoids the Docker-out-of-Docker volume path issue).
+                // zap-baseline.py refuses to write a report unless /zap/wrk is a
+                // mounted directory, so back it with a named volume, then docker cp
+                // the report out (docker cp avoids the Docker-out-of-Docker host
+                // path problem). -I keeps passive-scan warnings from failing the step.
                 sh '''
                     docker rm -f zap-scan || true
-                    docker run --name zap-scan --network devsecops-net \
+                    docker volume rm zap-wrk >/dev/null 2>&1 || true
+                    docker run --name zap-scan --network devsecops-net -v zap-wrk:/zap/wrk \
                         ghcr.io/zaproxy/zaproxy:stable \
                         zap-baseline.py -t http://petclinic-staging:8080 -r zap-report.html -I || true
                     docker cp zap-scan:/zap/wrk/zap-report.html zap-report.html || true
                     docker rm zap-scan || true
+                    docker volume rm zap-wrk >/dev/null 2>&1 || true
                 '''
             }
         }
