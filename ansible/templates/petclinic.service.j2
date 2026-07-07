@@ -1,0 +1,14 @@
+[Unit]
+Description=Spring PetClinic
+After=network.target
+
+[Service]
+# Run the packaged Spring Boot jar. Spring Boot exits with 143 on SIGTERM,
+# so treat that as a clean stop. Restart if it crashes.
+ExecStart=/usr/bin/java -jar {{ app_jar }}
+SuccessExitStatus=143
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target

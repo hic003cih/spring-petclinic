@@ -1,0 +1,52 @@
+---
+# Deploy spring-petclinic to the production VM:
+# install Java, copy the built jar, and run it as a systemd service.
+# The jar path on the Jenkins side is passed in as -e jar_src=... by the pipeline.
+- name: Deploy spring-petclinic to production
+  hosts: production
+  become: true                      # use sudo on the VM for apt / systemd
+  vars:
+    app_dir: /opt/petclinic
+    app_jar: /opt/petclinic/petclinic.jar
+
+  tasks:
+    - name: Install the Java 17 runtime
+      ansible.builtin.apt:
+        name: openjdk-17-jre-headless
+        state: present
+        update_cache: true
+
+    - name: Create the application directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the built jar to the VM
+      ansible.builtin.copy:
+        src: "{{ jar_src }}"        # absolute path on the Jenkins controller
+        dest: "{{ app_jar }}"
+        mode: "0644"
+      notify: Restart petclinic
+
+    - name: Install the systemd service unit
+      ansible.builtin.template:
+        src: templates/petclinic.service.j2
+        dest: /etc/systemd/system/petclinic.service
+        mode: "0644"
+      notify: Restart petclinic
+
+    - name: Enable petclinic and make sure it is running
+      ansible.builtin.systemd:
+        name: petclinic
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    # Runs only when the jar or the unit file changed (a new deploy).
+    - name: Restart petclinic
+      ansible.builtin.systemd:
+        name: petclinic
+        state: restarted
+        daemon_reload: true

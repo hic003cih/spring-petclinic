@@ -1,7 +1,7 @@
 // Declarative CI pipeline for spring-petclinic.
 // Jenkins runs these stages on every change pushed to the fork:
-// checkout -> build -> test -> SAST -> build image -> deploy staging -> DAST.
-// A later subtask adds deployment to the production VM.
+// checkout -> build -> test -> SAST -> build image -> deploy staging -> DAST
+// -> deploy to the production VM with Ansible.
 pipeline {
     agent any
 
@@ -95,6 +95,20 @@ pipeline {
                     docker cp zap-scan:/zap/wrk/zap-report.html zap-report.html || true
                     docker rm zap-scan || true
                     docker volume rm zap-wrk >/dev/null 2>&1 || true
+                '''
+            }
+        }
+
+        stage('Deploy to VM') {
+            steps {
+                // Deploy the built jar to the production VM with Ansible over SSH,
+                // running the same playbook we verified by hand. The SSH key lives
+                // in the Jenkins home volume; the inventory points Ansible at the VM.
+                sh '''
+                    JAR=$(ls target/*.jar | head -1)
+                    ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook \
+                        -i ansible/inventory.ini ansible/deploy.yml \
+                        -e "jar_src=$PWD/$JAR"
                 '''
             }
         }
