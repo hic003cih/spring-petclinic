@@ -6,14 +6,17 @@ pipeline {
     agent any
 
     triggers {
-        // Poll the GitHub fork for new commits about every 5 minutes.
-        // Takes effect after the first build, once Jenkins has read this file.
-        pollSCM('H/5 * * * *')
+        // Poll the GitHub fork for new commits every ~15 minutes. This is longer
+        // than a full build, so a slow build never overlaps the next poll.
+        pollSCM('H/15 * * * *')
     }
 
     options {
         // Keep only the last 10 builds so the disk does not fill up.
         buildDiscarder(logRotator(numToKeepStr: '10'))
+        // Only one build of this job at a time. Builds take longer than the poll
+        // interval; without this they overlap and two deploys could race the VM.
+        disableConcurrentBuilds()
     }
 
     stages {
