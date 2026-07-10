@@ -57,7 +57,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 // Package the app into a Docker image using the repo Dockerfile.
-                sh 'docker build -t petclinic-staging:${BUILD_NUMBER} .'
+                sh 'docker build -t petclinic-staging:latest .'
             }
         }
 
@@ -68,7 +68,7 @@ pipeline {
                 sh '''
                     docker rm -f petclinic-staging || true
                     docker run -d --name petclinic-staging --network devsecops-net \
-                        petclinic-staging:${BUILD_NUMBER}
+                        petclinic-staging:latest
                     for i in $(seq 1 30); do
                         if curl -sf http://petclinic-staging:8080/ > /dev/null; then
                             echo "petclinic-staging is up"; break
